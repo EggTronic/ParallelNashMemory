@@ -28,18 +28,24 @@ class  MixedStrategy (object):
 	def __init__ (self):
 		self.values = {}
 
+	def __str__(self):
+		s = ''
+		for v in self.values.keys():
+			s += str(v) + ' -> '+str(self.values[v])[:5] + ' |\n'
+		return s
+
 	def assign(self, size):
 		percentage = {}
 		total = 0
 		for i in range(size):
 			self.values[i] = 0
 		for i in range(size):
-			strategy = random.randint(0,size-1)
 			weight = random.randint(0,5)
-			percentage[strategy] = weight
+			percentage[i] = weight
 			total += weight
-		for strategy in percentage.keys():
-			self.values[strategy] = percentage[strategy]/total
+		if total != 0:
+			for strategy in percentage.keys():
+				self.values[strategy] = percentage[strategy]/total
 
 	def support(self):
 		l = set()
@@ -55,3 +61,4 @@ class  MixedStrategy (object):
 			if self.values[k] == 0:
 				l.add(PureStrategy(value = k))
 		return l
+

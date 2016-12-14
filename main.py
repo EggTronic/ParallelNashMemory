@@ -4,13 +4,13 @@
 
 from agent import *
 from strategy import *
+from pulp import *
 import random
 import sys
-import numpy as np
-import matplotlib.pyplot as plt
-import datetime
-from pulp import *
 import uuid
+#import numpy as np
+#import matplotlib.pyplot as plt
+#import datetime
 
 def play(payoff_matrix, player1, player2, termi_num):
 
@@ -24,30 +24,27 @@ def play(payoff_matrix, player1, player2, termi_num):
 		return payoff
 
 	count = 0
+	iteration = 1
 
 	while count < termi_num:
+		print('----------------Iteration ',iteration,'----------------')
+
 		T2 = player1.random_generate()
 		T1 = player2.random_generate()
 
-		E = payoff(T2,player2.piN) + payoff(T1,player1.piN)
+		print('p1: \n'+str(player1.piN)+'p2: \n'+str(player2.piN))
+
+		E = payoff(T2,player2.piN) - payoff(player1.piN,T1)
 
 		if E > 0:
+			print('Find winning Strategy at this iteration\n\n')
 			player1.W = T2
 			player2.W = T1
 
 			player1.updateWMN()
 			player2.updateWMN()
 
-			sub_matrix = []
-			for i in player1.WMN:
-				row = []
-				for j in player2.WMN:
-					row.append(payoff_matrix[i.value][j.value])
-				sub_matrix.append(row)
-
-			print('Sub Matrix')
-			print(sub_matrix)
-
+			#--------------------------------------- Solve Player1 -------------------------------------
 			# objective
 			lpProb = LpProblem("solve" + str(uuid.uuid4()), LpMaximize)
 			v = LpVariable("v", -100)
@@ -69,22 +66,24 @@ def play(payoff_matrix, player1, player2, termi_num):
 			for j in range(len(player2.WMN)):
 				total = 0
 				for i in range(len(player1.WMN)):
-					total += M[i][j] * player1_probabilities[i] 
+					total += payoff_matrix[i][j] * player1_probabilities[i] 
 				lpProb += v <= total 
 
 			# solve lp
 			GLPK().solve(lpProb)
 
-			for v in lpProb.Variables():
+			for v in lpProb.variables():
+				print('v: '+str(v)+'- '+str(v.varValue))
 				for i in player1.WMN:
 					if v.name == 'x'+ str(i.value):
 						player1.piN.values[i.value] = v.varValue
 
 			player1.updateWMN()
 
+			#--------------------------------------- Solve Player1 -------------------------------------
 			# objective
-			lpProb2 = LpProblem("solve" + str(uuid.uuid4()), LpMaximize)
-			v2 = LpVariable("v", -100)
+			lpProb2 = LpProblem("solve2" + str(uuid.uuid4()), LpMinimize)
+			v2 = LpVariable("v2", -100)
 			lpProb2 += v2 
 
 			# init - player1's probabilities as lp variables
@@ -95,7 +94,7 @@ def play(payoff_matrix, player1, player2, termi_num):
 
 			# constrain - probabilities sum to 1
 			total = 0
-			for y in player1_probabilities: 
+			for y in player2_probabilities: 
 				total += y
 			lpProb2 += total == 1
 
@@ -103,29 +102,32 @@ def play(payoff_matrix, player1, player2, termi_num):
 			for i in range(len(player1.WMN)):
 				total = 0
 				for j in range(len(player2.WMN)):
-					total += M[i][j] * player2_probabilities[j] 
+					total += payoff_matrix[i][j] * player2_probabilities[j] 
 				lpProb2 += v2 >= total 
 
 			# solve lp
 			GLPK().solve(lpProb2)
 
-			for v2 in lpProb2.Variables():
-				for i in player1.WMN:
-					if v2.name == 'x'+ str(i.value):
-						player1.piN.values[i.value] = v2.varValue
+			for v2 in lpProb2.variables():
+				print('v2: '+str(v2)+'- '+str(v2.varValue))
+				for i in player2.WMN:
+					if v2.name == 'y'+ str(i.value):
+						player2.piN.values[i.value] = v2.varValue
 
-			player2.updateWMN()
-
+			player2.updateWMN()	
+			
+			#--------------------------------- Go Next Iteration -------------------------------
+			iteration += 1
 
 		else:
+			print('No Winning Strategy at this iteration\n')
+			iteration += 1
 			count += 1
 
-	print (payoff_matrix)
-	print ('P1 :', player1.piN)
-	print ('P2 :', player2.piN)
-			
-
-	
+	print ('--------------Final solution---------------\n')
+	print ('Payoff Matrix:')
+	print (payoff_matrix,'\n')
+	print('Player1: \n'+str(player1.piN)+'Player2: \n'+str(player2.piN))
 
 def main():
 

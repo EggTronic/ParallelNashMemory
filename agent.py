@@ -2,12 +2,12 @@
 # SD @ Uol
 # danliangchen@gmail.com
 
-import random
-import sys
-from pulp import *
+
 from strategy import *
-from pulp import *
-import uuid
+#from pulp import *
+import sys
+#import random
+#import uuid
 
 class Agent:
 	def __init__ (self, size, name):
